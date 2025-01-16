@@ -1,0 +1,11 @@
+title:
+  en_us:
+    Design Options
+
+    Review
+tooltip:
+  en_us: >-
+
+    Create a list with all Design Options and where they are used. On which Views, View Templates, Schedule and dependent Sheets.
+
+    This allows to check which potentially important Views and Sheets use a specific design option.

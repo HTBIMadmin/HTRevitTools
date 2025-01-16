@@ -2,8 +2,10 @@ title:
   en_us: BIM Maintenance
 layout:
   - Parameters
+  - Delete
   - Identical Instances
   - RVT Link Worksets
   - CAD Worksets
   - Purge Images
+  - Remove Unused Filters
   - Warnings
