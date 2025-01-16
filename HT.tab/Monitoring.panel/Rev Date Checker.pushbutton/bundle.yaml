@@ -1,0 +1,8 @@
+title:
+  en_us:
+    Rev Date
+  
+    Checker
+tooltip:
+  en_us: >-
+    This tool verifies the revision format in the file and provides a list of all revision dates, along with their corresponding creator.
