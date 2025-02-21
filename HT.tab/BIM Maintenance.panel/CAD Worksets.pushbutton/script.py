@@ -2,7 +2,7 @@
 # Author: Pawel Block
 # Company: Haworth Tompkins Ltd
 # Date: 2024-08-26
-# Version: 1.0.1
+# Version: 1.0.2
 # Description: This tool checks if all CAD files (instance elements and Types) are set to the "Z-Linked CAD" workset and allows correction if they are not.
 # Tested with: Revit 2022+
 # Requirements: pyRevit add-in
@@ -13,7 +13,7 @@ from pyrevit import revit, DB, forms
 doc = revit.doc
 
 # Define the workset name that should be used for CAD files
-correct_workset_name = ["Z-Linked CAD","Z-Linked-CAD"]
+correct_workset_name = "Z-Linked CAD"
 
 # Collect all CAD instances (both linked and imported)
 cad_instances = DB.FilteredElementCollector(doc)\
@@ -52,18 +52,18 @@ for cad_instance in cad_instances:
         cad_creator = DB.WorksharingUtils.GetWorksharingTooltipInfo(doc, cad_instance.Id).Creator
 
         # Check if the worksets are not set to the correct workset
-        if cad_workset not in correct_workset_name or cad_type_workset not in  correct_workset_name:
+        if not cad_workset.startswith(correct_workset_name) or not cad_type_workset.startswith(correct_workset_name):
             id = cad_instance.Id.ToString()
             # If either workset is incorrect, add it to the list
             if cad_workset not in correct_workset_name and cad_type_workset not in correct_workset_name:
                 incorrect_workset_cad.append(
-                    "{} - Instance & Type (Current: {}, {}) - Creator: {} - Id: {}".format(cad_name, cad_workset, cad_type_workset, cad_creator, id))
+                    "{} - Wrong Instance & Type Worksets: {}, {} - Creator: {} - Id: {}".format(cad_name, cad_workset, cad_type_workset, cad_creator, id))
             elif cad_workset not in  correct_workset_name:
                 incorrect_workset_cad.append(
-                    "{} - Instance (Current: {}) - Creator: {} - Id: {}".format(cad_name, cad_workset, cad_creator, id))
+                    "{} - Wrong Instance Workset: {} - Creator: {} - Id: {}".format(cad_name, cad_workset, cad_creator, id))
             elif cad_type_workset not in correct_workset_name:
                 incorrect_workset_cad.append(
-                    "{} - Type (Current: {}) - Creator: {} - Id: {}".format(cad_name, cad_type_workset, cad_creator, id))
+                    "{} - Wrong Type Workset: {} - Creator: {} - Id: {}".format(cad_name, cad_type_workset, cad_creator, id))
 
 # Display the result
 if not incorrect_workset_cad:
@@ -91,8 +91,9 @@ else:
         # Correct the worksets for the selected CAD files
         with revit.Transaction("Correct CAD Worksets"):
             # Create workset Z-Linked CAD if it doesn't exist:
-            if not correct_workset_Id:
-                new_CAD_workset = DB.Workset.Create(revit.doc, correct_workset_name[0])
+            # Workset1 id number is 0.
+            if not correct_workset_Id and correct_workset_Id != 0:
+                new_CAD_workset = DB.Workset.Create(revit.doc, correct_workset_name)
                 correct_workset_Id = new_CAD_workset.Id.IntegerValue
             for selected in selected_options:
                 # Extract the CAD file name and workset type from the selected string
@@ -105,10 +106,10 @@ else:
 
                     if instance_cad_name == cad_name:
                         # Set the correct workset for the CAD instance or type
-                        if cad_type == "Instance":
+                        if "Instance" in selected:
                             workset_param = cad_instance.Parameter[DB.BuiltInParameter.ELEM_PARTITION_PARAM]
                             workset_param.Set(correct_workset_Id)
-                        elif cad_type == "Type":
+                        if "Type" in selected:
                             cad_type_id = cad_instance.GetTypeId()
                             cad_type_element = doc.GetElement(cad_type_id)
                             workset_param = cad_type_element.Parameter[DB.BuiltInParameter.ELEM_PARTITION_PARAM]

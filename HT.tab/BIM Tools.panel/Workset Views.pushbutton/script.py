@@ -1,10 +1,11 @@
 # Author: Pawel Block
 # Company: Haworth Tompkins Ltd
 # Date: 2024-05-14
-# Version: 1.0.3
+# Version: 1.0.4
 # Description: This script will create a 3D view for each workset and will update existing Workset views. It allows to specify a View Template which can direct new views to specific Project Browser folders.
 # Tested with: Revit +2022
 # Requirements: pyRevit add-in
+# Since 1.0.4 Old 3D workset views will be deleted if they start with A- or Z- ad are located in the same folder as in the the workset View Template.
 
 import System
 # Import pyRevit modules
@@ -78,7 +79,7 @@ else:
 
     # Iterates over each Workset and get its name
     for workset in worksets:
-        # This will sore worksets with no corresponding view
+        # This will store worksets with no corresponding view
         worksetsDict[workset.Name] = workset
 
     collector = DB.FilteredElementCollector(doc).OfClass(DB.View3D)
@@ -179,6 +180,55 @@ else:
             # Sets a selected View Template to new and existing Views
             # A selected View Template must allow to to modify workset visibilities
             if return_viewTemplate.Name != '<None>':
+                # Check if view template controls HTL parameters
+                view_template_not_controlled_settings = return_viewTemplate.GetNonControlledTemplateParameterIds()
+                htl_type_param = return_viewTemplate.LookupParameter("HTL View Type")
+                htl_subtype_param = return_viewTemplate.LookupParameter("HTL View Sub Type")
+
+                # Function to check if a parameter is controlled by the template
+                def is_param_controlled(p):
+                    if p.Id not in view_template_not_controlled_settings:
+                        # p has a value if AsString() is not empty (or None)
+                        val = p.AsString()
+                        return bool(val and val.strip())
+                    return False
+
+                if is_param_controlled(htl_type_param) and is_param_controlled(htl_subtype_param):
+
+                    htl_type_value = htl_type_param.AsString()
+                    htl_subtype_value = htl_subtype_param.AsString()
+                    
+                    # Find all views with matching HTL parameters
+                    all_3d_views = DB.FilteredElementCollector(doc).OfClass(DB.View3D).ToElements()
+                    views_to_delete = []
+                    existingWorkset3DViewsNames = [v.Name for v in existingWorkset3DViews]
+                    
+                    for view in all_3d_views:
+                        # Make sure view is not a View Template and this is not one of our existing Workset 3D views
+                        if not view.IsTemplate and view.Name not in existingWorkset3DViewsNames:
+                            # If the name starts with "A-" or "Z-", skip deletion
+                            view_name = view.Name
+                            if (view_name.startswith("A-") or 
+                                view_name.startswith("Z-")):
+                                view_type = view.LookupParameter("HTL View Type")
+                                view_subtype = view.LookupParameter("HTL View Sub Type")
+                                if (view_type and view_subtype and 
+                                    view_type.AsString() == htl_type_value and 
+                                    view_subtype.AsString() == htl_subtype_value):
+                                        views_to_delete.append(view.Id)
+                     # Delete matching views
+                    if views_to_delete:
+                        view_names = [doc.GetElement(id).Name for id in views_to_delete]
+                        message = "The following old workset views will be deleted:\n- " + "\n- ".join(view_names) + "\n\nDo you want to continue?"
+                        opts = ['Yes', 'No']
+                        selected_option = SelectOverrideOpt.show(
+                            opts,
+                            response = 'Yes',
+                            message=message
+                        )
+                        if selected_option == 'Yes':
+                            for id in views_to_delete:
+                                doc.Delete(id)
                 # Sets the workset visibility of the new 3D views
                 viewTemplateApplied = applyViewTemplate(return_viewTemplate)
                 if not viewTemplateApplied:

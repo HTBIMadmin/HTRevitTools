@@ -1,7 +1,7 @@
 # Author: Pawel Block
 # Company: Haworth Tompkins Ltd
 # Date: 2025-01-07
-# Version: 1.0.0
+# Version: 1.0.1
 # Description: Export many schedules at once to .csv file format.
 # Tested with: Revit +2022
 # Requirements: pyRevit add-in
@@ -22,6 +22,7 @@ def export_schedule_to_csv(schedule, export_path):
     try:
         # Define CSV export options
         options = DB.ViewScheduleExportOptions()
+        options.FieldDelimiter = ',' # Default is Tab
         
         # Construct the full file path
         file_name = "{}.csv".format(schedule.Name)
